@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Card Flip Game</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1f1f1f;
+            color: #fff;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+        }
+
+        #stats {
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+
+        #board {
+            display: flex;
+            flex-wrap: wrap;
+            width: 420px;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .card {
+            width: 90px;
+            height: 110px;
+            background: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 40px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .flipped {
+            background: #fff;
+            color: #000;
+        }
+
+        .matched {
+            background: #0f0;
+            color: #000;
+            cursor: default;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Memory Card Flip Game</h1>
+
+    <div id="stats">
+        Moves: <span id="moves">0</span>
+        &nbsp; | &nbsp;
+        Matches: <span id="matchPairs">0</span>
+    </div>
+
+    <div id="board"></div>
+
+    <script>
+        // Emoji symbols
+        const symbols = ["🐶", "🐱", "🐼", "🦁", "🐯", "🐸", "🐵", "🦊"];
+        let deck = [];
+
+        let flippedCards = [];
+        let matchedCount = 0;
+        let matchPairs = 0;
+        let moves = 0;
+
+        const board = document.getElementById("board");
+        const movesEl = document.getElementById("moves");
+        const matchPairsEl = document.getElementById("matchPairs");
+
+        // Shuffle function
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                let j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // Create deck
+        function createDeck() {
+            deck = [];
+            let doubled = symbols.concat(symbols);
+            doubled = shuffle(doubled);
+
+            doubled.forEach((symbol, i) => {
+                deck.push({
+                    id: i,
+                    symbol: symbol,
+                    matched: false
+                });
+            });
+        }
+
+        // Render the board
+        function renderBoard() {
+            board.innerHTML = "";
+            deck.forEach((card) => {
+                const div = document.createElement("div");
+                div.classList.add("card");
+                div.setAttribute("data-id", card.id);
+                div.textContent = "?";
+
+                div.addEventListener("click", () => flipCard(card.id));
+
+                board.appendChild(div);
+            });
+        }
+
+        // Handle card flip
+        function flipCard(id) {
+            const card = deck[id];
+            const el = document.querySelector(`.card[data-id='${id}']`);
+
+            if (card.matched || flippedCards.includes(id)) return;
+            if (flippedCards.length === 2) return;
+
+            el.classList.add("flipped");
+            el.textContent = card.symbol;
+            flippedCards.push(id);
+
+            if (flippedCards.length === 2) {
+                moves++;
+                movesEl.textContent = moves;
+
+                setTimeout(checkMatch, 700);
+            }
+        }
+
+        // Match checking
+        function checkMatch() {
+            const [a, b] = flippedCards;
+            const cardA = deck[a];
+            const cardB = deck[b];
+
+            const elA = document.querySelector(`.card[data-id='${a}']`);
+            const elB = document.querySelector(`.card[data-id='${b}']`);
+
+            if (cardA.symbol === cardB.symbol) {
+                // match
+                cardA.matched = true;
+                cardB.matched = true;
+
+                matchedCount += 2;
+                matchPairs = matchedCount / 2;
+                matchPairsEl.textContent = matchPairs;
+
+                elA.classList.add("matched");
+                elB.classList.add("matched");
+            } else {
+                // not match → flip back
+                elA.classList.remove("flipped");
+                elA.textContent = "?";
+
+                elB.classList.remove("flipped");
+                elB.textContent = "?";
+            }
+
+            flippedCards = [];
+
+            // Game complete
+            if (matchedCount === deck.length) {
+                setTimeout(() => {
+                    alert("🎉 Congratulations! You matched all cards!");
+                }, 300);
+            }
+        }
+
+        // Start game
+        createDeck();
+        renderBoard();
+    </script>
+
+</body>
+
+</html>
