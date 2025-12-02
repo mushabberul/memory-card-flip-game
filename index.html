@@ -4,190 +4,373 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Memory Card Flip Game</title>
+    <title>Memory Match Game</title>
 
     <style>
         body {
-            font-family: Arial, sans-serif;
-            background: #1f1f1f;
-            color: #fff;
             margin: 0;
-            padding: 20px;
+            background: #000814;
+            font-family: "Poppins", sans-serif;
+            color: #b8e2ff;
             display: flex;
             flex-direction: column;
             align-items: center;
         }
 
-        h1 {
-            margin-bottom: 10px;
+        #topPanel {
+            margin-top: 20px;
+            display: flex;
+            gap: 25px;
+            font-size: 20px;
         }
 
-        #stats {
-            margin-bottom: 20px;
-            font-size: 18px;
+        .panelBox {
+            background: #001d3d;
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: 1px solid #00b4d8;
+            text-align: center;
+        }
+
+        #controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+        }
+
+        button {
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            background: linear-gradient(45deg, #7209b7, #4361ee);
+            color: #fff;
+            font-size: 16px;
         }
 
         #board {
-            display: flex;
-            flex-wrap: wrap;
-            width: 420px;
-            gap: 10px;
-            justify-content: center;
+            margin-top: 40px;
+            display: grid;
+            grid-template-columns: repeat(4, 110px);
+            gap: 15px;
         }
 
         .card {
-            width: 90px;
-            height: 110px;
-            background: #333;
+            width: 110px;
+            height: 120px;
+            border-radius: 12px;
+            background: #003566;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 40px;
-            border-radius: 10px;
+            font-size: 45px;
+            color: #fff;
+            border: 2px solid #00eaff;
+            box-shadow: 0 0 10px #00eaff;
             cursor: pointer;
             transition: 0.3s;
         }
 
-        .flipped {
-            background: #fff;
+        .card.flipped {
+            background: #caf0f8;
             color: #000;
         }
 
-        .matched {
-            background: #0f0;
+        .card.matched {
+            background: #80ffdb;
             color: #000;
+            box-shadow: 0 0 15px #80ffdb;
             cursor: default;
+        }
+
+        /* ------- MODALS ------- */
+        #resultModal,
+        #instructionModal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            animation: fadeIn 0.3s;
+        }
+
+        .modalBox {
+            background: #001d3d;
+            padding: 30px;
+            width: 380px;
+            border-radius: 14px;
+            border: 2px solid #00b4d8;
+            box-shadow: 0 0 20px #00b4d8;
+            text-align: center;
+            animation: scaleIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes scaleIn {
+            from {
+                transform: scale(0.7);
+            }
+
+            to {
+                transform: scale(1);
+            }
+        }
+
+        /* Confetti */
+        .confetti {
+            position: fixed;
+            top: -10px;
+            width: 10px;
+            height: 10px;
+            opacity: 0.8;
+            animation: fall linear infinite;
+        }
+
+        @keyframes fall {
+            to {
+                transform: translateY(100vh) rotate(360deg);
+            }
         }
     </style>
 </head>
 
 <body>
 
-    <h1>Memory Card Flip Game</h1>
+    <h1 style="margin-top: 20px; color: #90e0ef;">Memory Match</h1>
 
-    <div id="stats">
-        Moves: <span id="moves">0</span>
-        &nbsp; | &nbsp;
-        Matches: <span id="matchPairs">0</span>
+    <div id="topPanel">
+        <div class="panelBox">⏱ Time: <span id="time">00:00</span></div>
+        <div class="panelBox">🔁 Moves: <span id="moves">0</span></div>
+        <div class="panelBox">🎯 Matches: <span id="matches">0</span></div>
+    </div>
+
+    <div id="controls">
+        <button onclick="restartGame()">🔄 Restart</button>
+        <button onclick="openInstruction()">📘 How to Play</button>
     </div>
 
     <div id="board"></div>
 
+    <!-- WIN MODAL -->
+    <div id="resultModal">
+        <div class="modalBox">
+            <h2>🎉 Mission Complete!</h2>
+            <p>⏱ Time: <span id="finalTime"></span></p>
+            <p>🔁 Moves: <span id="finalMoves"></span></p>
+            <button onclick="restartGame()">Play Again</button>
+        </div>
+    </div>
+
+    <!-- INSTRUCTION MODAL -->
+    <div id="instructionModal">
+        <div class="modalBox">
+            <h2>📘 How to Play</h2>
+            <p>• Flip two cards each turn.</p>
+            <p>• If both emojis match → you score a pair.</p>
+            <p>• Match all pairs to win the game.</p>
+            <p>• Try to finish in fewer moves and less time!</p>
+            <button onclick="closeInstruction()">Close</button>
+        </div>
+    </div>
+
+    <!-- 🔊 SOUNDS -->
+    <audio id="clickSound" src="./click.mp3"></audio>
+    <audio id="matchSound" src="./match.mp3"></audio>
+    <audio id="winSound" src="./win.mp3"></audio>
+
     <script>
-        // Emoji symbols
+        /* ---------------- SOUND SYSTEM ---------------- */
+        const clickS = document.getElementById("clickSound");
+        const matchS = document.getElementById("matchSound");
+        const winS = document.getElementById("winSound");
+
+        function playClick() {
+            clickS.currentTime = 0;
+            clickS.play().catch(() => { });
+        }
+
+        function playMatch() {
+            matchS.currentTime = 0;
+            matchS.play().catch(() => { });
+        }
+
+        function playWin() {
+            winS.currentTime = 0;
+            winS.play().catch(() => { });
+        }
+
+        /* ---------------- GAME LOGIC ---------------- */
         const symbols = ["🐶", "🐱", "🐼", "🦁", "🐯", "🐸", "🐵", "🦊"];
         let deck = [];
-
-        let flippedCards = [];
-        let matchedCount = 0;
-        let matchPairs = 0;
+        let flipped = [];
+        let matched = 0;
         let moves = 0;
+
+        let timer = null;
+        let seconds = 0;
 
         const board = document.getElementById("board");
         const movesEl = document.getElementById("moves");
-        const matchPairsEl = document.getElementById("matchPairs");
+        const matchesEl = document.getElementById("matches");
+        const timeEl = document.getElementById("time");
 
-        // Shuffle function
-        function shuffle(array) {
-            for (let i = array.length - 1; i > 0; i--) {
-                let j = Math.floor(Math.random() * (i + 1));
-                [array[i], array[j]] = [array[j], array[i]];
-            }
-            return array;
+        function startTimer() {
+            timer = setInterval(() => {
+                seconds++;
+                const m = String(Math.floor(seconds / 60)).padStart(2, "0");
+                const s = String(seconds % 60).padStart(2, "0");
+                timeEl.textContent = `${m}:${s}`;
+            }, 1000);
         }
 
-        // Create deck
+        function shuffle(arr) {
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
         function createDeck() {
             deck = [];
-            let doubled = symbols.concat(symbols);
-            doubled = shuffle(doubled);
-
-            doubled.forEach((symbol, i) => {
-                deck.push({
-                    id: i,
-                    symbol: symbol,
-                    matched: false
-                });
+            let list = shuffle(symbols.concat(symbols));
+            list.forEach((sym, i) => {
+                deck.push({ id: i, symbol: sym, matched: false });
             });
         }
 
-        // Render the board
         function renderBoard() {
             board.innerHTML = "";
-            deck.forEach((card) => {
+            deck.forEach(card => {
                 const div = document.createElement("div");
                 div.classList.add("card");
-                div.setAttribute("data-id", card.id);
                 div.textContent = "?";
-
-                div.addEventListener("click", () => flipCard(card.id));
-
+                div.setAttribute("data-id", card.id);
+                div.onclick = () => flip(card.id);
                 board.appendChild(div);
             });
         }
 
-        // Handle card flip
-        function flipCard(id) {
-            const card = deck[id];
-            const el = document.querySelector(`.card[data-id='${id}']`);
+        function flip(id) {
+            playClick(); // 🔊 sound on every click
 
-            if (card.matched || flippedCards.includes(id)) return;
-            if (flippedCards.length === 2) return;
+            const card = deck[id];
+            const el = document.querySelector(`.card[data-id="${id}"]`);
+
+            if (card.matched || flipped.includes(id)) return;
+            if (flipped.length === 2) return;
+
+            if (seconds === 0 && moves === 0) startTimer();
 
             el.classList.add("flipped");
             el.textContent = card.symbol;
-            flippedCards.push(id);
+            flipped.push(id);
 
-            if (flippedCards.length === 2) {
+            if (flipped.length === 2) {
                 moves++;
                 movesEl.textContent = moves;
-
-                setTimeout(checkMatch, 700);
+                setTimeout(checkMatch, 500);
             }
         }
 
-        // Match checking
         function checkMatch() {
-            const [a, b] = flippedCards;
-            const cardA = deck[a];
-            const cardB = deck[b];
+            const [a, b] = flipped;
+            const c1 = deck[a];
+            const c2 = deck[b];
 
-            const elA = document.querySelector(`.card[data-id='${a}']`);
-            const elB = document.querySelector(`.card[data-id='${b}']`);
+            const el1 = document.querySelector(`.card[data-id="${a}"]`);
+            const el2 = document.querySelector(`.card[data-id="${b}"]`);
 
-            if (cardA.symbol === cardB.symbol) {
-                // match
-                cardA.matched = true;
-                cardB.matched = true;
+            if (c1.symbol === c2.symbol) {
+                c1.matched = true;
+                c2.matched = true;
+                matched++;
+                matchesEl.textContent = matched;
 
-                matchedCount += 2;
-                matchPairs = matchedCount / 2;
-                matchPairsEl.textContent = matchPairs;
+                el1.classList.add("matched");
+                el2.classList.add("matched");
 
-                elA.classList.add("matched");
-                elB.classList.add("matched");
+                playMatch(); // 🔊 match sound
+
+                if (matched === symbols.length) gameWon();
             } else {
-                // not match → flip back
-                elA.classList.remove("flipped");
-                elA.textContent = "?";
-
-                elB.classList.remove("flipped");
-                elB.textContent = "?";
+                el1.classList.remove("flipped");
+                el1.textContent = "?";
+                el2.classList.remove("flipped");
+                el2.textContent = "?";
             }
 
-            flippedCards = [];
+            flipped = [];
+        }
 
-            // Game complete
-            if (matchedCount === deck.length) {
-                setTimeout(() => {
-                    alert("🎉 Congratulations! You matched all cards!");
-                }, 300);
+        /* ------- GAME WON ------- */
+        function gameWon() {
+            clearInterval(timer);
+            playWin(); // 🎉 final celebration sound
+            celebrate();
+
+            document.getElementById("finalTime").textContent = timeEl.textContent;
+            document.getElementById("finalMoves").textContent = moves;
+            document.getElementById("resultModal").style.display = "flex";
+        }
+
+        function restartGame() {
+            clearInterval(timer);
+            seconds = 0;
+            timeEl.textContent = "00:00";
+
+            moves = 0;
+            movesEl.textContent = 0;
+
+            matched = 0;
+            matchesEl.textContent = 0;
+
+            flipped = [];
+
+            document.getElementById("resultModal").style.display = "none";
+
+            createDeck();
+            renderBoard();
+        }
+
+        /* ------- CONFETTI ------- */
+        function celebrate() {
+            for (let i = 0; i < 100; i++) {
+                const c = document.createElement("div");
+                c.classList.add("confetti");
+                c.style.left = Math.random() * 100 + "%";
+                c.style.background = `hsl(${Math.random() * 360}, 100%, 70%)`;
+                c.style.animationDuration = 2 + Math.random() * 3 + "s";
+                c.style.transform = `rotate(${Math.random() * 360}deg)`;
+                document.body.appendChild(c);
+
+                setTimeout(() => c.remove(), 5000);
             }
         }
 
-        // Start game
-        createDeck();
-        renderBoard();
+        /* ------- INSTRUCTION MODAL ------- */
+        function openInstruction() {
+            document.getElementById("instructionModal").style.display = "flex";
+        }
+
+        function closeInstruction() {
+            document.getElementById("instructionModal").style.display = "none";
+        }
+
+        restartGame();
     </script>
 
 </body>
