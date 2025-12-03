@@ -17,11 +17,18 @@
             align-items: center;
         }
 
+        h1 {
+            margin-top: 20px;
+            color: #90e0ef;
+        }
+
         #topPanel {
             margin-top: 20px;
             display: flex;
             gap: 25px;
-            font-size: 20px;
+            font-size: 18px;
+            flex-wrap: wrap;
+            justify-content: center;
         }
 
         .panelBox {
@@ -36,6 +43,8 @@
             margin-top: 20px;
             display: flex;
             gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
         }
 
         button {
@@ -48,22 +57,27 @@
             font-size: 16px;
         }
 
+        /* -------- RESPONSIVE GRID FIX -------- */
         #board {
-            margin-top: 40px;
+            margin-top: 35px;
             display: grid;
-            grid-template-columns: repeat(4, 110px);
+            grid-template-columns: repeat(4, 1fr);
+            /* Always 4 columns */
             gap: 15px;
+            width: 90%;
+            max-width: 500px;
         }
 
         .card {
-            width: 110px;
-            height: 120px;
+            width: 100%;
+            aspect-ratio: 1;
+            /* Perfect square */
             border-radius: 12px;
             background: #003566;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 45px;
+            font-size: clamp(24px, 6vw, 45px);
             color: #fff;
             border: 2px solid #00eaff;
             box-shadow: 0 0 10px #00eaff;
@@ -101,7 +115,7 @@
         .modalBox {
             background: #001d3d;
             padding: 30px;
-            width: 380px;
+            width: 350px;
             border-radius: 14px;
             border: 2px solid #00b4d8;
             box-shadow: 0 0 20px #00b4d8;
@@ -149,7 +163,7 @@
 
 <body>
 
-    <h1 style="margin-top: 20px; color: #90e0ef;">Memory Match</h1>
+    <h1>Memory Match</h1>
 
     <div id="topPanel">
         <div class="panelBox">⏱ Time: <span id="time">00:00</span></div>
@@ -192,35 +206,17 @@
     <audio id="winSound" src="./win.mp3"></audio>
 
     <script>
-        /* ---------------- SOUND SYSTEM ---------------- */
         const clickS = document.getElementById("clickSound");
         const matchS = document.getElementById("matchSound");
         const winS = document.getElementById("winSound");
 
-        function playClick() {
-            clickS.currentTime = 0;
-            clickS.play().catch(() => { });
-        }
+        function playClick() { clickS.currentTime = 0; clickS.play().catch(() => { }); }
+        function playMatch() { matchS.currentTime = 0; matchS.play().catch(() => { }); }
+        function playWin() { winS.currentTime = 0; winS.play().catch(() => { }); }
 
-        function playMatch() {
-            matchS.currentTime = 0;
-            matchS.play().catch(() => { });
-        }
-
-        function playWin() {
-            winS.currentTime = 0;
-            winS.play().catch(() => { });
-        }
-
-        /* ---------------- GAME LOGIC ---------------- */
         const symbols = ["🐶", "🐱", "🐼", "🦁", "🐯", "🐸", "🐵", "🦊"];
-        let deck = [];
-        let flipped = [];
-        let matched = 0;
-        let moves = 0;
-
-        let timer = null;
-        let seconds = 0;
+        let deck = [], flipped = [], matched = 0, moves = 0;
+        let timer = null, seconds = 0;
 
         const board = document.getElementById("board");
         const movesEl = document.getElementById("moves");
@@ -247,9 +243,7 @@
         function createDeck() {
             deck = [];
             let list = shuffle(symbols.concat(symbols));
-            list.forEach((sym, i) => {
-                deck.push({ id: i, symbol: sym, matched: false });
-            });
+            list.forEach((sym, i) => deck.push({ id: i, symbol: sym, matched: false }));
         }
 
         function renderBoard() {
@@ -257,15 +251,15 @@
             deck.forEach(card => {
                 const div = document.createElement("div");
                 div.classList.add("card");
-                div.textContent = "?";
                 div.setAttribute("data-id", card.id);
+                div.textContent = "?";
                 div.onclick = () => flip(card.id);
                 board.appendChild(div);
             });
         }
 
         function flip(id) {
-            playClick(); // 🔊 sound on every click
+            playClick();
 
             const card = deck[id];
             const el = document.querySelector(`.card[data-id="${id}"]`);
@@ -288,40 +282,32 @@
 
         function checkMatch() {
             const [a, b] = flipped;
-            const c1 = deck[a];
-            const c2 = deck[b];
-
+            const c1 = deck[a], c2 = deck[b];
             const el1 = document.querySelector(`.card[data-id="${a}"]`);
             const el2 = document.querySelector(`.card[data-id="${b}"]`);
 
             if (c1.symbol === c2.symbol) {
-                c1.matched = true;
-                c2.matched = true;
+                c1.matched = c2.matched = true;
                 matched++;
                 matchesEl.textContent = matched;
 
                 el1.classList.add("matched");
                 el2.classList.add("matched");
-
-                playMatch(); // 🔊 match sound
+                playMatch();
 
                 if (matched === symbols.length) gameWon();
             } else {
-                el1.classList.remove("flipped");
-                el1.textContent = "?";
-                el2.classList.remove("flipped");
-                el2.textContent = "?";
+                el1.classList.remove("flipped"); el1.textContent = "?";
+                el2.classList.remove("flipped"); el2.textContent = "?";
             }
 
             flipped = [];
         }
 
-        /* ------- GAME WON ------- */
         function gameWon() {
             clearInterval(timer);
-            playWin(); // 🎉 final celebration sound
+            playWin();
             celebrate();
-
             document.getElementById("finalTime").textContent = timeEl.textContent;
             document.getElementById("finalMoves").textContent = moves;
             document.getElementById("resultModal").style.display = "flex";
@@ -331,22 +317,15 @@
             clearInterval(timer);
             seconds = 0;
             timeEl.textContent = "00:00";
-
-            moves = 0;
+            moves = matched = 0;
             movesEl.textContent = 0;
-
-            matched = 0;
             matchesEl.textContent = 0;
-
             flipped = [];
-
             document.getElementById("resultModal").style.display = "none";
-
             createDeck();
             renderBoard();
         }
 
-        /* ------- CONFETTI ------- */
         function celebrate() {
             for (let i = 0; i < 100; i++) {
                 const c = document.createElement("div");
@@ -354,18 +333,14 @@
                 c.style.left = Math.random() * 100 + "%";
                 c.style.background = `hsl(${Math.random() * 360}, 100%, 70%)`;
                 c.style.animationDuration = 2 + Math.random() * 3 + "s";
-                c.style.transform = `rotate(${Math.random() * 360}deg)`;
                 document.body.appendChild(c);
-
                 setTimeout(() => c.remove(), 5000);
             }
         }
 
-        /* ------- INSTRUCTION MODAL ------- */
         function openInstruction() {
             document.getElementById("instructionModal").style.display = "flex";
         }
-
         function closeInstruction() {
             document.getElementById("instructionModal").style.display = "none";
         }
